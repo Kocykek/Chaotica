@@ -10,7 +10,7 @@
     <ProductVersion>10.0.20506</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <RootNamespace></RootNamespace>
-    <ProjectGuid>{1FF91832-A55B-0441-240F-C5871C46A2D0}</ProjectGuid>
+    <ProjectGuid>{E38FB11A-E721-6970-46B2-FB446584F091}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>Assembly-CSharp</AssemblyName>
@@ -1047,7 +1047,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="RoadArchitect.csproj">
-      <Project>{98D4110B-6017-1166-9EAF-7F543CA00F4A}</Project>
+      <Project>{D2AC3E4B-E4E6-64EE-25E6-9D6741D0392E}</Project>
       <Name>RoadArchitect</Name>
     </ProjectReference>
   </ItemGroup>

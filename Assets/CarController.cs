@@ -1,176 +1,153 @@
 using UnityEngine;
 
-public class RealisticCarController : MonoBehaviour
+public class FastSmoothCarController : MonoBehaviour
 {
     [Header("Car Setup")]
     public WheelCollider frontLeftWheel, frontRightWheel, rearLeftWheel, rearRightWheel;
     public Transform frontLeftTransform, frontRightTransform, rearLeftTransform, rearRightTransform;
 
     [Header("Car Parameters")]
-    public float maxMotorTorque = 20000f;
-    public float maxSteeringAngle = 30f;
-    public float brakeForce = 5000f;
-    public float maxSpeed = 200f; // Maximum speed to cap the car
-    public float jumpForce = 50055f;
+    public float maxMotorTorque = 80000f; // Increased for quick acceleration
+    public float maxSteeringAngle = 30f;  // Sharper turns
+    public float brakeForce = 10000f;     // Strong brakes
+    public float maxSpeed = 500f;
+    public float jumpForce = 400f;
     public float groundCheckDistance = 0.5f;
 
     [Header("Rigidbody Settings")]
-    public float carMass = 800f;
-    public Vector3 centerOfMass = new Vector3(0, -0.1f, 0); // Lower center of mass for stability
+    public float carMass = 1200f;
+    public Vector3 centerOfMass = new Vector3(0, -0.5f, 0); // Lowered for tighter handling
 
     [Header("Drift Settings")]
     public bool isDrifting = false;
     public ParticleSystem driftSmokeLeft;
     public ParticleSystem driftSmokeRight;
-    public float driftFactor = 0.5f; // Lower = More Drift, Higher = More Grip
-    public float driftTorqueBoost = 1.2f; // Extra power when drifting
+    public float driftFactor = 0.2f;   // More drift
+    public float driftTorqueBoost = 2.2f;
     private ParticleSystem.EmissionModule leftEmission;
     private ParticleSystem.EmissionModule rightEmission;
-    
 
     private Rigidbody rb;
-    public Transform groundCheck;
-    public LayerMask groundLayer;
     private float motorInput, steeringInput, brakeInput;
+    private float currentSpeed;
 
     void Start()
     {
-        AdjustWheelFriction(frontLeftWheel);
-        AdjustWheelFriction(frontRightWheel);
-        AdjustWheelFriction(rearLeftWheel);
-        AdjustWheelFriction(rearRightWheel);
         rb = GetComponent<Rigidbody>();
+        rb.mass = carMass;
+        rb.centerOfMass = centerOfMass;
+        rb.drag = 0.02f;
+        rb.angularDrag = 3f;
 
-        // Setup Rigidbody
-        SetupRigidbody();
+        SetUpWheelFriction(frontLeftWheel);
+        SetUpWheelFriction(frontRightWheel);
+        SetUpWheelFriction(rearLeftWheel);
+        SetUpWheelFriction(rearRightWheel);
 
-        // Setup Suspension
-        SetupSuspension();
-    leftEmission = driftSmokeLeft.emission;
-    rightEmission = driftSmokeRight.emission;
-        Debug.Log("🚗 Car Initialized!");
+        leftEmission = driftSmokeLeft.emission;
+        rightEmission = driftSmokeRight.emission;
     }
 
     void Update()
     {
-        // Get Player Input
         motorInput = Input.GetAxis("Vertical");
         steeringInput = Input.GetAxis("Horizontal");
         brakeInput = Input.GetKey(KeyCode.Space) ? 1f : 0f;
 
         isDrifting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         AdjustDrift();
-        // Update Wheel Transforms
         UpdateWheelVisuals();
-        // Press space to jump
-
     }
 
     void FixedUpdate()
     {
-        if (!IsGrounded())
-        {
-            Debug.LogWarning("🚨 Car is in the air!");
-            return;
-        }
-        else
-        {
-            if (Input.GetKeyDown(KeyCode.X))
-        {
-            rb.AddForce(Vector3.up * jumpForce);
-            Debug.LogWarning("🚨 Car is in the air!");
-        }
-        }
-        // Apply Car Systems
         ApplyMotor();
         ApplySteering();
         ApplyBraking();
-        
-    }
 
-    // Setup Rigidbody for the car's physics
-    private void SetupRigidbody()
-    {
-        rb.mass = carMass;
-        rb.drag = 0.02f;
-        rb.angularDrag = 2f;
-        rb.centerOfMass = centerOfMass;
-    }
-
-    // Setup car suspension for better handling
-    private void SetupSuspension()
-    {
-        JointSpring suspension = new JointSpring
+        if (Input.GetKeyDown(KeyCode.X) && IsGrounded())
         {
-            spring = 40000f,
-            damper = 3000f,
-            targetPosition = 0.5f
-        };
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
 
-        frontLeftWheel.suspensionSpring = suspension;
-        frontRightWheel.suspensionSpring = suspension;
-        rearLeftWheel.suspensionSpring = suspension;
-        rearRightWheel.suspensionSpring = suspension;
+        if (currentSpeed > maxSpeed)
+        {
+            rb.velocity = rb.velocity.normalized * maxSpeed;
+        }
     }
 
-    void AdjustWheelFriction(WheelCollider wheel)
-    {
-        WheelFrictionCurve forwardFriction = wheel.forwardFriction;
-        forwardFriction.stiffness = 3.5f;  // Increase traction (Default ~1.0)
-        wheel.forwardFriction = forwardFriction;
+void SetUpWheelFriction(WheelCollider wheel)
+{
+    WheelFrictionCurve forward = wheel.forwardFriction;
+    WheelFrictionCurve sideways = wheel.sidewaysFriction;
 
-        WheelFrictionCurve sidewaysFriction = wheel.sidewaysFriction;
-        sidewaysFriction.stiffness = 2.0f; // Prevents excessive sliding
-        wheel.sidewaysFriction = sidewaysFriction;
-    }
+    // Forward = Acceleration grip
+    forward.extremumSlip = 0.4f;
+    forward.extremumValue = 2f;
+    forward.asymptoteSlip = 0.8f;
+    forward.asymptoteValue = 1.5f;
+    forward.stiffness = 2.5f;
 
-    // Apply motor torque for car acceleration
+    // Sideways = Turning grip + drift balance
+    sideways.extremumSlip = 0.3f;
+    sideways.extremumValue = 2.2f;
+    sideways.asymptoteSlip = 0.6f;
+    sideways.asymptoteValue = 1.8f;
+    sideways.stiffness = 2.0f;
+
+    wheel.forwardFriction = forward;
+    wheel.sidewaysFriction = sideways;
+}
+
+
+
     private void ApplyMotor()
 {
-    float currentSpeed = rb.velocity.magnitude;
-    float speedFactor = Mathf.Clamp01(currentSpeed / maxSpeed);
+    currentSpeed = rb.velocity.magnitude * 3.6f; // convert to km/h
 
-    // 🚀 Improved Acceleration Formula
-    float accelerationFactor = Mathf.Pow(1f - speedFactor, 2f); // Quadratic curve for smooth transition
+    // More aggressive acceleration curve
+    float accelerationFactor = Mathf.Pow(1f - (currentSpeed / maxSpeed), 1.2f); // smoother scaling
     float torque = motorInput * maxMotorTorque * accelerationFactor;
 
     if (isDrifting)
     {
         torque *= driftTorqueBoost;
     }
-    // Apply Torque to Rear Wheels
+
     rearLeftWheel.motorTorque = torque;
     rearRightWheel.motorTorque = torque;
 
-    Debug.Log($"Speed: {currentSpeed:F2} | Acceleration Factor: {accelerationFactor:F2} | Torque: {torque:F2}");
+    Debug.Log($"Speed: {currentSpeed:F1} km/h | Torque: {torque:F0}");
 }
 
 
-    // Apply steering to the front wheels
     private void ApplySteering()
+{
+    float speedFactor = Mathf.Clamp01(currentSpeed / maxSpeed);
+    float adjustedSteering = steeringInput * Mathf.Lerp(maxSteeringAngle, maxSteeringAngle * 0.4f, speedFactor);
+
+    if (isDrifting)
     {
-        float steering = steeringInput * maxSteeringAngle;
-
-        frontLeftWheel.steerAngle = steering;
-        frontRightWheel.steerAngle = steering;
-
-        Debug.Log($"Steering Angle: {steering}");
+        adjustedSteering *= 0.8f; // slight cut during drift
     }
 
-    // Apply braking force
+    frontLeftWheel.steerAngle = adjustedSteering;
+    frontRightWheel.steerAngle = adjustedSteering;
+
+    Debug.Log($"Steering: {adjustedSteering:F1}");
+}
+
+
     private void ApplyBraking()
     {
         float brake = brakeInput * brakeForce;
 
-        rearLeftWheel.brakeTorque = brake;
-        rearRightWheel.brakeTorque = brake;
         frontLeftWheel.brakeTorque = brake;
         frontRightWheel.brakeTorque = brake;
-
-        Debug.Log($"Braking Force: {brake}");
+        rearLeftWheel.brakeTorque = brake;
+        rearRightWheel.brakeTorque = brake;
     }
 
-    // Update the wheel visuals for better visualization of the car movement
     private void UpdateWheelVisuals()
     {
         UpdateWheelPositionAndRotation(frontLeftWheel, frontLeftTransform);
@@ -179,55 +156,42 @@ public class RealisticCarController : MonoBehaviour
         UpdateWheelPositionAndRotation(rearRightWheel, rearRightTransform);
     }
 
-    // Update the position and rotation of each wheel collider
     private void UpdateWheelPositionAndRotation(WheelCollider wheelCollider, Transform wheelTransform)
     {
-        Vector3 position;
-        Quaternion rotation;
-        wheelCollider.GetWorldPose(out position, out rotation);
-        wheelTransform.position = position;
-        wheelTransform.rotation = rotation;
+        Vector3 pos;
+        Quaternion rot;
+        wheelCollider.GetWorldPose(out pos, out rot);
+        wheelTransform.position = pos;
+        wheelTransform.rotation = rot;
     }
-
 
     void AdjustDrift()
-    {
-        WheelFrictionCurve sidewaysFriction = rearLeftWheel.sidewaysFriction;
-    
-        if (isDrifting)
-        {
-            sidewaysFriction.stiffness = driftFactor; // Lower grip for drifting
-        }
-        else
-        {
-            sidewaysFriction.stiffness = 2.0f; // Restore normal grip
-        }
+{
+    float driftGrip = isDrifting ? driftFactor : 1.5f;
 
-        rearLeftWheel.sidewaysFriction = sidewaysFriction;
-        rearRightWheel.sidewaysFriction = sidewaysFriction;
-        leftEmission.enabled = isDrifting;
-        rightEmission.enabled = isDrifting;
-    }
+    WheelFrictionCurve sidewaysFriction = rearLeftWheel.sidewaysFriction;
+    sidewaysFriction.stiffness = driftGrip;
+
+    rearLeftWheel.sidewaysFriction = sidewaysFriction;
+    rearRightWheel.sidewaysFriction = sidewaysFriction;
+
+    leftEmission.enabled = isDrifting;
+    rightEmission.enabled = isDrifting;
+}
 
 
-    // Check if the car is grounded
     private bool IsGrounded()
     {
         return rearLeftWheel.GetGroundHit(out _) && rearRightWheel.GetGroundHit(out _);
     }
 
     void OnCollisionEnter(Collision collision)
-{
-    if (collision.gameObject.CompareTag("Wall"))
     {
-        Debug.Log("💥 Car hit a wall!");
-
-        Vector3 impactForce = collision.relativeVelocity * 0.2f; // Absorb 80% of impact
-        rb.velocity -= impactForce; // Reduce speed after impact
-
-        rb.AddForce(-collision.contacts[0].normal * 200f, ForceMode.Impulse); // Push car away slightly
+        if (collision.gameObject.CompareTag("Wall"))
+        {
+            Vector3 impact = collision.relativeVelocity * 0.2f;
+            rb.velocity -= impact;
+            rb.AddForce(-collision.contacts[0].normal * 250f, ForceMode.Impulse);
+        }
     }
-}
-
-
 }
