@@ -5,8 +5,8 @@ public class CarCameraFollow : MonoBehaviour
     public Transform target;  // The car
     public Vector3 offset = new Vector3(0, 2.35f, -6.5f);  // Camera's offset behind the car
     public Vector3 rotationOffset = new Vector3(0, 0f, 0);  // Rotation offset (adjust the Y-axis rotation angle)
-    public float positionSmoothSpeed = 5f;  // Smoothness for position following
-    public float rotationSmoothSpeed = 5f;  // Smoothness for rotation following
+    public float positionSmoothSpeed = 35f;  // Smoothness for position following
+    public float rotationSmoothSpeed = 35f;  // Smoothness for rotation following
     public Camera orbitCamera;  // The orbit camera (main camera)
     public Camera topCamera;    // The top camera (second camera)
     public Vector3 cameraOffset = new Vector3(5f, 25f, -5f); 
@@ -97,8 +97,8 @@ public class CarCameraFollow : MonoBehaviour
         Quaternion desiredRotation = Quaternion.LookRotation(target.position - transform.position, Vector3.up);
         desiredRotation *= Quaternion.Euler(rotationOffset);  // Apply the rotation offset
         transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, rotationSmoothSpeed * Time.deltaTime);
-        rotationSmoothSpeed = 5f;
-        positionSmoothSpeed = 5f;
+        // rotationSmoothSpeed = 35f;
+        // positionSmoothSpeed = 35f;
         }
     }
 }

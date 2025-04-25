@@ -1,5 +1,5 @@
 using UnityEngine;
-
+using TMPro;
 public class FastSmoothCarController : MonoBehaviour
 {
     [Header("Car Setup")]
@@ -9,6 +9,7 @@ public class FastSmoothCarController : MonoBehaviour
     [Header("Car Parameters")]
     public float maxMotorTorque = 80000f; // Increased for quick acceleration
     public float maxSteeringAngle = 30f;  // Sharper turns
+    public float currentMaxSteeringAngle = 0f;
     public float brakeForce = 10000f;     // Strong brakes
     public float maxSpeed = 500f;
     public float jumpForce = 400f;
@@ -24,6 +25,9 @@ public class FastSmoothCarController : MonoBehaviour
     public ParticleSystem driftSmokeRight;
     public float driftFactor = 0.2f;   // More drift
     public float driftTorqueBoost = 2.2f;
+
+    public TextMeshProUGUI speedText;
+    
     private ParticleSystem.EmissionModule leftEmission;
     private ParticleSystem.EmissionModule rightEmission;
 
@@ -117,25 +121,36 @@ void SetUpWheelFriction(WheelCollider wheel)
     rearLeftWheel.motorTorque = torque;
     rearRightWheel.motorTorque = torque;
 
-    Debug.Log($"Speed: {currentSpeed:F1} km/h | Torque: {torque:F0}");
+    speedText.text = $"Speed: {(currentSpeed/ 3.14f):F1} km/h";
+    //Debug.Log($"Spee: {(currentSpeed/ 3.14f):F1} km/h | Torque: {tordque:F0}");
 }
 
 
-    private void ApplySteering()
+   private void ApplySteering()
 {
-    float speedFactor = Mathf.Clamp01(currentSpeed / maxSpeed);
-    float adjustedSteering = steeringInput * Mathf.Lerp(maxSteeringAngle, maxSteeringAngle * 0.4f, speedFactor);
+    float baseAngle = maxSteeringAngle; // max at 0 km/h
+    float minAngle = 2f;   // minimum possible steering at high speed
+    float exponent = 35.3f; // tweak this for how *fast* it drops (try 3.5–4.5)
 
+    float speedFactor = Mathf.Clamp01(currentSpeed / 245f); // normalized based on 200 km/h
+
+    // Exponential dropoff — fast reduction
+    float steeringAngle = Mathf.Lerp(baseAngle, minAngle, Mathf.Pow(speedFactor, exponent));
+    float adjustedSteering = steeringInput * steeringAngle;
+    currentMaxSteeringAngle = steeringAngle;
     if (isDrifting)
-    {
-        adjustedSteering *= 0.8f; // slight cut during drift
-    }
+        adjustedSteering *= 0.85f;
 
     frontLeftWheel.steerAngle = adjustedSteering;
     frontRightWheel.steerAngle = adjustedSteering;
 
-    Debug.Log($"Steering: {adjustedSteering:F1}");
+    //Debug.Log($"Speed: {(currentSpeed / 3.14f):F0} km/h | Steering Angle: {adjustedSteering:F2}");
 }
+
+
+
+
+
 
 
     private void ApplyBraking()

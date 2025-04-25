@@ -356,6 +356,8 @@
 "Assets/AICarController.cs"
 "Assets/CarCameraControl.cs"
 "Assets/CarController.cs"
+"Assets/Checkpoint.cs"
+"Assets/LapManager.cs"
 "Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark01.cs"
 "Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark01_UGUI.cs"
 "Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark02.cs"
